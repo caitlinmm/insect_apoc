@@ -1,0 +1,8 @@
+LTER.site	Locale	Species.code	Year	N.Obs	Abundance
+KonzaPrairie	gall	gall insects	1988	15600	1841
+KonzaPrairie	gall	gall insects	1989	72300	8570
+KonzaPrairie	gall	gall insects	1990	64001	3354
+KonzaPrairie	gall	gall insects	1991	57257	3357
+KonzaPrairie	gall	gall insects	1993	29655	3215
+KonzaPrairie	gall	gall insects	1995	56676	4672
+KonzaPrairie	gall	gall insects	1996	47494	2810
