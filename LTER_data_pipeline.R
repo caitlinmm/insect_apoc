@@ -3662,7 +3662,7 @@ library('scales')
 ### Boxplots
 # Relaxed criteria
 
-trends.r = read.csv('time_trends_arthropods_relaxed.csv',as.is=T,check.names=F,header=T)
+trends.r = read.csv('/Users/caitlinmiller/Downloads/External_Database_S2_time_trends_arthropods_relaxed.csv',as.is=T,check.names=F,header=T)
 
 # Group studies by site/taxa/method
 trends.r$Site[which(trends.r$LTER=='MidwestSTN')] = 'aphids' #merge aphid records into one boxplot
@@ -3689,7 +3689,7 @@ lters = unique(apply(array(levels(trends.r$LL)),1,function(x){strsplit(x,'_')[[1
 cols = c('lightblue',rep('white',7),'lightblue',rep('white',9),'lightblue','lightblue','white','white')
 cbind(levels(trends.r$LL),cols)
 # All taxa
-png('./plots/time_trends/abundance/ALL_time_trends_boxplot_relaxed_noannotations.png',width=500*2,height=500)
+png('ALL_time_trends_boxplot_relaxed_noannotations.png',width=500*2,height=500)
 par(mfrow=c(1,1),cex.lab=2,cex.axis=1.5,lwd=2,oma=c(0,0,0,0),mar=c(15,8,1,1))
 plt = plot(trends.r$LL,trends.r$coef_slope,col=cols,ylim=c(-8,8),xaxt='n',yaxt='n',ylab='Change in abundance',axes=F)
 axis(2,at=seq(-8,8,2),labels=seq(-8,8,2),lwd=2)
