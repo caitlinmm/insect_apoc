@@ -302,18 +302,18 @@ uls2 = uls[which(uls.count>1)]
 
 
 # Estimate arthropod taxa abundance time trends
-#######
+#####
 # AR_reml function is used and defined for this
 
-# First trying to have a full pipeline of the relaxed inclusion criteria processing and visualization
+# First trying to have a full pipeline of the relaxed inclusion criteria processing and visualization.
+# Relaxed pipeline is what they used to recapitulate their results so that is what we are sticking with.
 
 # Import species abundance data
 data1 = read.csv('PerSpecies_Abundance_LTER_annotated.csv',as.is=T,check.names=F,header=T)
 data1$LL = paste(data1$LTER.site,data1$Locale,sep='_')
 sp.count = apply(array(unique(data1$LL)),1,function(x){length(unique(data1$Species.code[which(data1$LL==x)]))})
 
-# relaxed inclusion criteria
-#####
+
 LLS = paste(data1$LTER.site,data1$Locale,data1$Species.code,sep='_') #unique LTER by sub-site by species combinations
 u.LLS = unique(LLS)
 LLS.count = apply(array(u.LLS),1,function(x){d2=data1[which(LLS==x),];length(which(d2$Abundance!=0))})
@@ -393,159 +393,11 @@ for (l in 1:length(u.LLS2)){
   }
 }
 write.csv(time.trends.Z,'time_trends_arthropods_relaxed.csv',quote=F,row.names=F)
-#####
-
-
-# moderately strict inclusion criteria
-#####
-LLS = paste(data1$LTER.site,data1$Locale,data1$Species.code,sep='_') #unique LTER by sub-site by species combinations
-u.LLS = unique(LLS)
-LLS.count = apply(array(u.LLS),1,function(x){d2=data1[which(LLS==x),];length(which(d2$Abundance!=0))})
-u.LLS2 = u.LLS[which(LLS.count>0)]
-time.trends.Z = data.frame('LTER'=NA,'Site'=NA,'Species'=NA,'MSE'=-999,'b'=-999,'coef_int'=-999,'coef_slope'=-999,'Pr_int'=-999,'Pr_slope'=-999,'logLik'=-999,'length'=-999,'Y1'=NA,'Y2'=NA,'Feeding'=NA,'Habitat'=NA,'Pollinator'=NA)
-tx = 1
-tx = 1
-for (l in 1:length(u.LLS2)){
-  print(l)
-  lls.data = data1[which(LLS==u.LLS2[l]),]
-  ## Line I added in to try and exclude any data collected after 2015
-  lls.data = lls.data[which(lls.data$Year <= 2015), ]
-  LL = paste0(strsplit(u.LLS2[l],'_')[[1]][1:2],collapse='_') #trim "no sample" years
-  if (LL=='HarvardForest_ants.hand' | LL=='HarvardForest_ants.litter' | LL=='HarvardForest_ants.bait'){ #deal with HarvardForest cases where time series differed in length
-    lls.data = lls.data[-which(lls.data$Year>2008),] #three ant datasets have no data past 2008
-  }
-  ### Quality threshold
-  if ( (length(which(!is.na(lls.data$Abundance))) > 7) & (length(which(lls.data$Abundance[!is.na(lls.data$Abundance)] > 0)) > 3) ){
-    ###
-    cmin = min(lls.data$Abundance[which(lls.data$Abundance>0)],na.rm=T)
-    if (is.na(cmin)){
-      lls.data$Abundance[which(lls.data$Abundance==0)] = 0.5 
-    } else {
-      lls.data$Abundance[which(lls.data$Abundance==0)] = 0.5 * cmin #replace zeroes with 0.5*minimum abundance value in this time series
-    }
-    lls.data$Abundance = log(lls.data$Abundance) #log-transform abundances
-    if (length(which(lls.data$Abundance==0))==length(lls.data$Abundance)){ #abundances are all = 1
-      add.coef = add.coef.Z = c(NA,NA,0,0,NA,NA,NA)
-    } else {
-      lls.years = sort(lls.data$Year)
-      lls.years.stretch = seq(lls.years[1],lls.years[length(lls.years)],1) #expand time series to include missing years
-      llsy.match = match(lls.years.stretch,lls.years)
-      X = llsy.match
-      X[which(!is.na(X))] = lls.data$Abundance[X[which(!is.na(X))]] #fill-in abundance values in the expanded time series
-      ## Once again, I have changed this so that it actually works in R because it was mad with the previous format.
-      Z = (-mean(X, na.rm=T) + X)/sd(X, na.rm=T) # z-transform
-      t.scale = 1:length(lls.years.stretch)
-      t.scale = (t.scale-min(t.scale))/max(t.scale) #original transform: scale between 0 and 1
-      arr.Z = AR_reml(Z ~ t.scale) #Z-transformed time trends
-      add.coef.Z = c(arr.Z[[1]],arr.Z[[2]],arr.Z[[3]][1,1],arr.Z[[3]][2,1],arr.Z[[5]][1],arr.Z[[5]][2],arr.Z[[6]])
-    }
-    time.trends.Z[tx,1] = strsplit(u.LLS2[l],'_')[[1]][1] #LTER
-    time.trends.Z[tx,2] = strsplit(u.LLS2[l],'_')[[1]][2] #Site
-    time.trends.Z[tx,3] = paste0(strsplit(u.LLS2[l],'_')[[1]][3:length(strsplit(u.LLS2[l],'_')[[1]])],collapse='_') #Species
-    time.trends.Z[tx,4] = add.coef.Z[1] #MSE
-    time.trends.Z[tx,5] = add.coef.Z[2] #b
-    time.trends.Z[tx,6] = add.coef.Z[3] #coef_int
-    time.trends.Z[tx,7] = add.coef.Z[4] #coef_slope
-    time.trends.Z[tx,8] = add.coef.Z[5] #Pr_int
-    time.trends.Z[tx,9] = add.coef.Z[6] #Pr_slope
-    time.trends.Z[tx,10] = add.coef.Z[7] #logLik
-    time.trends.Z[tx,11] = length(which(!is.na(Z))) #length of time series
-    time.trends.Z[tx,12] = lls.years.stretch[1] #first year in time series
-    time.trends.Z[tx,13] = lls.years.stretch[length(lls.years.stretch)] #last year in time series
-    time.trends.Z[tx,14] = lls.data$Feeding[1]
-    time.trends.Z[tx,15] = lls.data$Habitat[1]
-    time.trends.Z[tx,16] = lls.data$Pollinator[1]
-    tx = tx + 1
-    # Plot high quality time series
-    png(paste0(gsub('\\?','',u.LLS[l]),'.png'))
-    plot(t.scale,Z,type='l',main=u.LLS2[l],xlab='Scaled time',ylab='Z-transformed abundance',lwd=2)
-    abline(a=add.coef.Z[3],b=add.coef.Z[4],lty=2,col='red',lwd=1.5)
-    legend('topright',legend=c(paste0('slope = ',round(add.coef.Z[4],2)),paste0('length = ',length(which(!is.na(Z)))),paste0('autocor = ',round(add.coef.Z[2],2)),paste0('logLik = ',round(add.coef.Z[7],2))),ncol=1)
-    dev.off()
-  } else {
-    #ignore low quality time series
-  }
-}
-write.csv(time.trends.Z,'time_trends_arthropods_moderate.csv',quote=F,row.names=F)
-#####
-
-# strict inclusion criteria
-#####
-LLS = paste(data1$LTER.site,data1$Locale,data1$Species.code,sep='_') #unique LTER by sub-site by species combinations
-u.LLS = unique(LLS)
-LLS.count = apply(array(u.LLS),1,function(x){d2=data1[which(LLS==x),];length(which(d2$Abundance!=0))})
-u.LLS2 = u.LLS[which(LLS.count>0)]
-time.trends.Z = data.frame('LTER'=NA,'Site'=NA,'Species'=NA,'MSE'=-999,'b'=-999,'coef_int'=-999,'coef_slope'=-999,'Pr_int'=-999,'Pr_slope'=-999,'logLik'=-999,'length'=-999,'Y1'=NA,'Y2'=NA,'Feeding'=NA,'Habitat'=NA,'Pollinator'=NA)
-tx = 1
-for (l in 1:length(u.LLS2)){
-  print(l)
-  lls.data = data1[which(LLS==u.LLS2[l]),]
-  ## Another added in modification of years
-  lls.data = lls.data[which(lls.data$Year <= 2015), ]
-  LL = paste0(strsplit(u.LLS2[l],'_')[[1]][1:2],collapse='_') #trim "no sample" years
-  if (LL=='HarvardForest_ants.hand' | LL=='HarvardForest_ants.litter' | LL=='HarvardForest_ants.bait'){ #deal with HarvardForest cases where time series differed in length
-    lls.data = lls.data[-which(lls.data$Year>2008),] #three ant datasets have no data past 2008
-  }
-  ### Quality threshold
-  if ( (length(which(!is.na(lls.data$Abundance))) > 14) & (length(which(lls.data$Abundance[!is.na(lls.data$Abundance)] > 0)) > 9) ){
-    ###
-    cmin = min(lls.data$Abundance[which(lls.data$Abundance>0)],na.rm=T)
-    if (is.na(cmin)){
-      lls.data$Abundance[which(lls.data$Abundance==0)] = 0.5 
-    } else {
-      lls.data$Abundance[which(lls.data$Abundance==0)] = 0.5 * cmin #replace zeroes with 0.5*minimum abundance value in this time series
-    }
-    lls.data$Abundance = log(lls.data$Abundance) #log-transform abundances
-    if (length(which(lls.data$Abundance==0))==length(lls.data$Abundance)){ #abundances are all = 1
-      add.coef = add.coef.Z = c(NA,NA,0,0,NA,NA,NA)
-    } else {
-      lls.years = sort(lls.data$Year)
-      lls.years.stretch = seq(lls.years[1],lls.years[length(lls.years)],1) #expand time series to include missing years
-      llsy.match = match(lls.years.stretch,lls.years)
-      X = llsy.match
-      X[which(!is.na(X))] = lls.data$Abundance[X[which(!is.na(X))]] #fill-in abundance values in the expanded time series
-      ## Altered again
-      Z = (-mean(X, na.rm = T) + X)/sd(X, na.rm=T) # z-transform
-      t.scale = 1:length(lls.years.stretch)
-      t.scale = (t.scale-min(t.scale))/max(t.scale) #original transform: scale between 0 and 1
-      arr.Z = AR_reml(Z ~ t.scale) #Z-transformed time trends
-      add.coef.Z = c(arr.Z[[1]],arr.Z[[2]],arr.Z[[3]][1,1],arr.Z[[3]][2,1],arr.Z[[5]][1],arr.Z[[5]][2],arr.Z[[6]])
-    }
-    time.trends.Z[tx,1] = strsplit(u.LLS2[l],'_')[[1]][1] #LTER
-    time.trends.Z[tx,2] = strsplit(u.LLS2[l],'_')[[1]][2] #Site
-    time.trends.Z[tx,3] = paste0(strsplit(u.LLS2[l],'_')[[1]][3:length(strsplit(u.LLS2[l],'_')[[1]])],collapse='_') #Species
-    time.trends.Z[tx,4] = add.coef.Z[1] #MSE
-    time.trends.Z[tx,5] = add.coef.Z[2] #b
-    time.trends.Z[tx,6] = add.coef.Z[3] #coef_int
-    time.trends.Z[tx,7] = add.coef.Z[4] #coef_slope
-    time.trends.Z[tx,8] = add.coef.Z[5] #Pr_int
-    time.trends.Z[tx,9] = add.coef.Z[6] #Pr_slope
-    time.trends.Z[tx,10] = add.coef.Z[7] #logLik
-    time.trends.Z[tx,11] = length(which(!is.na(Z))) #length of time series
-    time.trends.Z[tx,12] = lls.years.stretch[1] #first year in time series
-    time.trends.Z[tx,13] = lls.years.stretch[length(lls.years.stretch)] #last year in time series
-    time.trends.Z[tx,14] = lls.data$Feeding[1]
-    time.trends.Z[tx,15] = lls.data$Habitat[1]
-    time.trends.Z[tx,16] = lls.data$Pollinator[1]
-    tx = tx + 1
-    # Plot high quality time series
-    png(paste0(gsub('\\?','',u.LLS[l]),'.png'))
-    plot(t.scale,Z,type='l',main=u.LLS2[l],xlab='Scaled time',ylab='Z-transformed abundance',lwd=2)
-    abline(a=add.coef.Z[3],b=add.coef.Z[4],lty=2,col='red',lwd=1.5)
-    legend('topright',legend=c(paste0('slope = ',round(add.coef.Z[4],2)),paste0('length = ',length(which(!is.na(Z)))),paste0('autocor = ',round(add.coef.Z[2],2)),paste0('logLik = ',round(add.coef.Z[7],2))),ncol=1)
-    dev.off()
-  } else {
-    #ignore low quality time series
-  }
-}
-time.trends.Z2 = time.trends.Z[-which(time.trends.Z$b>0.99),]
-write.csv(time.trends.Z2,'time_trends_arthropods_strict.csv',quote=F,row.names=F)
-
 
 
 library(scales)
 
-trends = read.csv('time_trends_arthropods_strict.csv',as.is=T,check.names=F,header=T)
+trends = read.csv('time_trends_arthropods_relaxed.csv',as.is=T,check.names=F,header=T)
 
 # This will be significantly pared down because we aren't looking at most of the sites
 
@@ -556,142 +408,27 @@ ggplot(trends, aes(LTER, coef_slope)) + geom_violin()
 ######
 
 
+# Trying to change from average of slopes to abundance in each year
+#####
+# Need to use a file from a little ways up the pipeline. This is fully added on afterwards.
 
+data1 = read.csv('PerSpecies_Abundance_LTER_annotated.csv',as.is=T,check.names=F,header=T)
+data1$LL = paste(data1$LTER.site,data1$Locale,sep='_')
 
+# Here we are agnostic to the species and just want to aggregate abundance counts over time.
+u.year = unique(data1$Year)
+all_abun = rep(NA, length(u.year))
 
-site.name = 'KonzaPrairie'
-locale.name = 'grasshopper'
-data1 = read.csv("/Users/caitlinmiller/Desktop/Github/insect_apoc/CGR022.csv",as.is=T,check.names=F,header=T)
-data1$Species = data1$SPECIES
-data1$Year = data1$RECYEAR
-data1$Number = as.numeric(data1$TOTAL)
-data1 = data1[which(data1$Species!='unknown' & data1$Species!='unknown ' & data1$Species!=''),]
-u.years = sort(as.numeric(unique(data1$Year)))
-u.species = unique(data1$Species)
-# Fix species names
-# Merge duplicates that have different species name spelling
-konza.duplicates = read.csv('./taxa_keys/KonzaPrairie_grasshoppers_duplicatenames.csv',as.is=T,check.names=F,header=F)
-data1 = data1[which(data1$Species!='Unknown'),]
-for (i in 1:nrow(data1)){
-  name.swap = konza.duplicates[which(konza.duplicates[,1]==data1$Species[i]),2]
-  if (length(name.swap)==0){
-    name.swap = konza.duplicates[match(data1$Species[i],konza.duplicates[,2]),2]
-  } else {
-  }
-  data1$Species[i] = name.swap
-  
-}
-u.species = unique(data1$Species)
-u.years = sort(as.numeric(unique(data1$Year)))
-u.years = list(u.years[1:2],u.years[(length(u.years)-1):(length(u.years))])
-for (y in 1:length(u.years)){
-  y.data = data1[which(data1$Year==u.years[[y]][1] | data1$Year==u.years[[y]][2]),]
-  rank.out = calc.ranks(y.data$Species,y.data$Number,rank.list,rx,paste(paste(u.years[[y]][1],u.years[[y]][2],sep='-'),site.name,locale.name,sep='_'))
-  rank.list = rank.out[[1]]
-  rx=rank.out[[2]]
+for(y in 1:length(u.year))
+{
+  y_ind = which(data1$Year == u.year[y])
+  all_abun[y] = sum(data1$Abundance[y_ind])
 }
 
 
 #####
 
-# Konza Prairie
-LTER = 'KonzaPrairie'
-species2 = output$Species[which(output$LTER==LTER)]
-u.species = unique(species2)
-eco.key2 = eco.key[which(eco.key$LTER==LTER),]
-sp.match = match(u.species,eco.key2$Species)
-output2 = add.annot(sps=u.species,annot.pos=sp.match,LTER=LTER,ecokey=eco.key2,output2=output2)
-unique(output2$Feeding[which(output2$LTER==LTER)])
-tmp = output2[which(output2$LTER==LTER),] #Check missing
-miss = tmp[which(is.na(tmp$Habitat)),]
-sp.miss = unique(miss$Species.code)
-miss.annot = cbind(c(NA,rep('Orthoptera',length(u.species)-1)),rep('herbivore',length(u.species)),rep('terrestrial',length(u.species)),rep('n',length(u.species)))
-for (i in 1:length(sp.miss)){ #Annotate missing
-  pos1 = which(output2$LTER==LTER & output2$Species.code==sp.miss[i])
-  output2[pos1,7] = miss.annot[i,1]
-  output2[pos1,10] = miss.annot[i,2]
-  output2[pos1,11] = miss.annot[i,3]
-  output2[pos1,12] = miss.annot[i,4]
-}
-tmp = output2[which(output2$LTER==LTER),] #Check missing
-miss = tmp[which(is.na(tmp$Habitat)),]
-sp.miss = unique(miss$Species.code) #PERFECT
 
-
-# TRying to get pieces from initial analyses to actual figs
-#####
-
-LLS = paste(data1$LTER.site,data1$Locale,data1$Species.code,sep='_') #unique LTER by sub-site by species combinations
-u.LLS = unique(LLS)
-LLS.count = apply(array(u.LLS),1,function(x){d2=data1[which(LLS==x),];length(which(d2$Abundance!=0))})
-u.LLS2 = u.LLS[which(LLS.count>0)]
-time.trends.Z = data.frame('LTER'=NA,'Site'=NA,'Species'=NA,'MSE'=-999,'b'=-999,'coef_int'=-999,'coef_slope'=-999,'Pr_int'=-999,'Pr_slope'=-999,'logLik'=-999,'length'=-999,'Y1'=NA,'Y2'=NA,'Feeding'=NA,'Habitat'=NA,'Pollinator'=NA,'Order'=NA)
-tx = 1
-for (l in 1:length(u.LLS2)){
-  print(l)
-  lls.data = data1[which(LLS==u.LLS2[l]),]
-  LL = paste0(strsplit(u.LLS2[l],'_')[[1]][1:2],collapse='_') #trim "no sample" years
-  if (LL=='HarvardForest_ants.hand' | LL=='HarvardForest_ants.litter' | LL=='HarvardForest_ants.bait'){ #deal with HarvardForest cases where time series differed in length
-    lls.data = lls.data[-which(lls.data$Year>2008),] #three ant datasets have no data past 2008
-  }
-  ### Quality threshold
-  if ( (length(which(!is.na(lls.data$Abundance))) > 3) & (length(which(lls.data$Abundance[!is.na(lls.data$Abundance)] > 0)) > 0) ){
-    ### 
-    cmin = min(lls.data$Abundance[which(lls.data$Abundance>0)],na.rm=T)
-    if (is.na(cmin)){
-      lls.data$Abundance[which(lls.data$Abundance==0)] = 0.5 
-    } else {
-      lls.data$Abundance[which(lls.data$Abundance==0)] = 0.5 * cmin #replace zeroes with 0.5*minimum abundance value in this time series
-    }
-    lls.data$Abundance = log(lls.data$Abundance) #log-transform abundances
-    if (length(which(lls.data$Abundance==0))==length(lls.data$Abundance)){ #abundances are all = 1
-      add.coef = add.coef.Z = c(NA,NA,0,0,NA,NA,NA)
-    } else {
-      lls.years = sort(lls.data$Year)
-      lls.years.stretch = seq(lls.years[1],lls.years[length(lls.years)],1) #expand time series to include missing years
-      llsy.match = match(lls.years.stretch,lls.years)
-      X = llsy.match
-      X[which(!is.na(X))] = lls.data$Abundance[X[which(!is.na(X))]] #fill-in abundance values in the expanded time series
-      Z = (X – mean(X, na.rm=T))/sd(X, na.rm=T) # z-transform
-      t.scale = 1:length(lls.years.stretch)
-      t.scale = (t.scale-min(t.scale))/max(t.scale) #original transform: scale between 0 and 1
-      arr.Z = AR_reml(Z ~ t.scale) #Z-transformed time trends
-      add.coef.Z = c(arr.Z[[1]],arr.Z[[2]],arr.Z[[3]][1,1],arr.Z[[3]][2,1],arr.Z[[5]][1],arr.Z[[5]][2],arr.Z[[6]])
-    }
-    time.trends.Z[tx,1] = strsplit(u.LLS2[l],'_')[[1]][1] #LTER
-    time.trends.Z[tx,2] = strsplit(u.LLS2[l],'_')[[1]][2] #Site
-    time.trends.Z[tx,3] = paste0(strsplit(u.LLS2[l],'_')[[1]][3:length(strsplit(u.LLS2[l],'_')[[1]])],collapse='_') #Species
-    time.trends.Z[tx,4] = add.coef.Z[1] #MSE
-    time.trends.Z[tx,5] = add.coef.Z[2] #b
-    time.trends.Z[tx,6] = add.coef.Z[3] #coef_int
-    time.trends.Z[tx,7] = add.coef.Z[4] #coef_slope
-    time.trends.Z[tx,8] = add.coef.Z[5] #Pr_int
-    time.trends.Z[tx,9] = add.coef.Z[6] #Pr_slope
-    time.trends.Z[tx,10] = add.coef.Z[7] #logLik
-    time.trends.Z[tx,11] = length(which(!is.na(Z))) #length of time series
-    time.trends.Z[tx,12] = lls.years.stretch[1] #first year in time series
-    time.trends.Z[tx,13] = lls.years.stretch[length(lls.years.stretch)] #last year in time series
-    time.trends.Z[tx,14] = lls.data$Feeding[1]
-    time.trends.Z[tx,15] = lls.data$Habitat[1]
-    time.trends.Z[tx,16] = lls.data$Pollinator[1]
-    time.trends.Z[tx,17] = lls.data$Order[1]
-    tx = tx + 1
-    # Plot high quality time series
-    png(paste0('./plots/time_trends/abundance/lineplots/',gsub('\\?','',u.LLS[l]),'.png'))
-    plot(t.scale,Z,type='l',main=u.LLS2[l],xlab='Scaled time',ylab='Z-transformed abundance',lwd=2)
-    abline(a=add.coef.Z[3],b=add.coef.Z[4],lty=2,col='red',lwd=1.5)
-    legend('topright',legend=c(paste0('slope = ',round(add.coef.Z[4],2)),paste0('length = ',length(which(!is.na(Z)))),paste0('autocor = ',round(add.coef.Z[2],2)),paste0('logLik = ',round(add.coef.Z[7],2))),ncol=1)
-    dev.off()
-  } else {
-    #ignore low quality time series
-  }
-}
-write.csv(time.trends.Z,'time_trends_arthropods_relaxed.csv',quote=F,row.names=F)
-
-
-
-
-#####
 
 
 # Functions they used
