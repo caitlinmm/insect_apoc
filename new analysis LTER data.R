@@ -1,7 +1,7 @@
 # Here, I will try to take the data from Crossley and compare what the violin plot
 # would look like without standardizing away the time trend/other odd pre-processing
 # steps that seemed to distort the data unnecessarily.
-
+#####
 # Here is the file they were on before they started all sorts of weird distorting processing
 data1 = read.csv('PerSpecies_Abundance_LTER_annotated.csv',as.is=T,check.names=F,header=T)
 
@@ -26,6 +26,7 @@ for(u in 1:length(u.species))
   # regression from that and evaluate the slope of it.
   slopes[u] = as.numeric(lm(Abundance ~ Year, data = data1[sp_ind, ])[[1]][2])
 }
+#####
 
 # Trying to isolate the effect of the AR_reml() function here by doing all the other stretching they do but not that.
 #####
@@ -171,4 +172,39 @@ for(r in 1:nrow(m_dat))
 
 #####
 
+
+# Looking at abundance vs. slope to see if there is any sort of relationship
+#####
+# here, I am trying to create a data frame that brings together slopes, starting abundances, and 
+# max abundances to look at the correlation between these measures in the real data vs. our simulated 
+# data.
+data1 = read.csv('PerSpecies_Abundance_LTER_annotated.csv',as.is=T,check.names=F,header=T)
+
+u.species = unique(data1$Species.code)
+no_species = length(u.species)
+
+slopes = rep(NA, no_species)
+max_abun = rep(NA, no_species)
+start_abun = rep(NA, no_species)
+
+for(spp in 1:no_species)
+{
+  spp_i = which(data1$Species.code == u.species[spp])
+  slopes[spp] = as.numeric(lm(Abundance ~ Year, data = data1[spp_i, ])[[1]][2])
+  max_abun[spp] = max(data1$Abundance[spp_i])
+  # For start abundance, I will take an average of the first 5 measurements to account for the possibility
+  # that the first measurement is an outlier.
+  start_abun[spp] = mean(data1$Abundance[spp_i][1:5])
+}
+
+
+
+
+
+
+
+
+
+
+#####
 
